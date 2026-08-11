@@ -622,7 +622,7 @@ MIT License
 
 ## Автор
 
-[Your Name] — Data Scientist / ML Engineer
+[Egor] — Data Scientist / ML Engineer
 
 ---
 
