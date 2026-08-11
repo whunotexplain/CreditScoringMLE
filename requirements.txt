@@ -5,6 +5,8 @@ scikit-learn==1.5.0
 lightgbm==4.3.0
 shap==0.45.0
 joblib==1.4.2
+polars==1.43.2
+polars-runtime-32==1.43.2
 
 # API
 fastapi==0.111.0
