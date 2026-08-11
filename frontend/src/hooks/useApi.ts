@@ -1,30 +1,34 @@
 import { useState, useCallback } from 'react';
 
-interface UseApiState<T> {
-  data: T | null;
-  loading: boolean;
-  error: string | null;
-}
+export function useApi<T, Args extends unknown[]>(
+  apiFn: (...args: Args) => Promise<T>
+) {
+  const [data, setData] = useState<T | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-export function useApi<T>() {
-  const [state, setState] = useState<UseApiState<T>>({
-    data: null,
-    loading: false,
-    error: null,
-  });
+  const execute = useCallback(
+    async (...args: Args) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const result = await apiFn(...args);
+        setData(result);
+        return result;
+      } catch (err: any) {
+        setError(err.message || 'Ошибка запроса');
+        throw err;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [apiFn]
+  );
 
-  const execute = useCallback(async (promise: Promise<T>) => {
-    setState({ data: null, loading: true, error: null });
-    try {
-      const data = await promise;
-      setState({ data, loading: false, error: null });
-      return data;
-    } catch (err: any) {
-      const error = err.message || 'Something went wrong';
-      setState({ data: null, loading: false, error });
-      throw err;
-    }
+  const reset = useCallback(() => {
+    setData(null);
+    setError(null);
   }, []);
 
-  return { ...state, execute };
+  return { data, loading, error, execute, reset };
 }
