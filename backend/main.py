@@ -1,6 +1,7 @@
 import logging
 from contextlib import asynccontextmanager
 
+import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -10,6 +11,8 @@ from app.database.session import engine
 from app.api.v1.router import router
 from app.ml.model import load_model
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 Base.metadata.create_all(bind=engine)
 
@@ -21,7 +24,8 @@ async def lifespan(app: FastAPI):
         logger.info("Модель загружена: %s", settings.MODEL_PATH)
     except FileNotFoundError as e:
         logger.warning("Модель не загружена при старте: %s", e)
-    yield 
+    yield
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -38,15 +42,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(router)
+
 
 @app.get("/")
 def root():
-    return {
-        "message": "Credit Scoring API",
-        "docs": "/docs",
-        "health": "/api/v1/health"
-    }
+    return {"message": "Credit Scoring API", "docs": "/docs", "health": "/health"}
 
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="127.0.0.1", port=8000)
+    uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
