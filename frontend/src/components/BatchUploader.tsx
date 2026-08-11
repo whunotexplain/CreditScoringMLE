@@ -1,160 +1,161 @@
 import { useState, useCallback } from 'react';
 import { useApi } from '@/hooks/useApi';
 import { predictBatch } from '@/services/api';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, Button } from './ui';
-import { Upload, FileSpreadsheet, Loader2, Download, CheckCircle } from 'lucide-react';
+import { Button } from './Button';
+import { Card } from './Card';
+import { Upload, FileSpreadsheet, Download, Loader2 } from 'lucide-react';
 import type { BatchResponse } from '@/types';
 
 export function BatchUploader() {
   const [file, setFile] = useState<File | null>(null);
-  const [dragActive, setDragActive] = useState(false);
-  const { execute, loading, data: result } = useApi<BatchResponse>();
+  const { data: result, loading, error, execute, reset } = useApi(predictBatch);
 
-  const handleDrag = useCallback((e: React.DragEvent) => {
+  const onDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    e.stopPropagation();
-    if (e.type === 'dragenter' || e.type === 'dragover') {
-      setDragActive(true);
-    } else if (e.type === 'dragleave') {
-      setDragActive(false);
-    }
+    const f = e.dataTransfer.files[0];
+    if (f?.name.endsWith('.csv')) setFile(f);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    if (e.dataTransfer.files?.[0]) {
-      setFile(e.dataTransfer.files[0]);
-    }
-  }, []);
-
-  const handleSubmit = async () => {
+  const handleUpload = async () => {
     if (!file) return;
-    await execute(predictBatch(file));
+    await execute(file);
+  };
+
+  const downloadResults = () => {
+    if (!result) return;
+    const csv = [
+      'id,probability,decision',
+      ...result.predictions.map((p) => `${p.id},${p.probability},${p.decision}`),
+    ].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `scoring_results_${result.batch_id}.csv`;
+    a.click();
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Batch Scoring</h1>
-        <p className="text-muted-foreground mt-2">
+        <p className="text-muted-foreground mt-1">
           Загрузите CSV-файл с заявками для массовой обработки
         </p>
       </div>
 
-      <Card>
-        <CardContent className="pt-6">
-          <div
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
-            className={`
-              border-2 border-dashed rounded-lg p-12 text-center transition-colors
-              ${dragActive ? 'border-primary bg-primary/5' : 'border-border'}
-            `}
-          >
-            <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-4" />
-            <p className="text-lg font-medium mb-2">
-              {file ? file.name : 'Перетащите CSV-файл или нажмите для выбора'}
+      <Card
+        className={`p-8 border-2 border-dashed transition-colors ${file ? 'border-primary bg-primary/5' : 'border-muted hover:border-muted-foreground/50'}`}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={onDrop}
+      >
+        <div className="flex flex-col items-center justify-center text-center space-y-4">
+          <div className="rounded-full bg-muted p-4">
+            <Upload className="h-8 w-8 text-muted-foreground" />
+          </div>
+          <div>
+            <p className="font-medium">
+              {file ? file.name : 'Перетащите CSV-файл или выберите'}
             </p>
-            <p className="text-sm text-muted-foreground mb-4">
-              Поддерживаются файлы до 50MB с колонками из application формы
+            <p className="text-sm text-muted-foreground mt-1">
+              Файл должен содержать колонки, соответствующие полям заявки
             </p>
-            <input
-              type="file"
-              accept=".csv"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
-              className="hidden"
-              id="csv-upload"
-            />
-            <label htmlFor="csv-upload">
-              <Button variant="outline" type="button" className="cursor-pointer" asChild>
+          </div>
+          {!file && (
+            <label className="cursor-pointer">
+              <input
+                type="file"
+                accept=".csv"
+                className="hidden"
+                onChange={(e) => e.target.files?.[0] && setFile(e.target.files[0])}
+              />
+              <Button type="button" variant="outline" asChild>
                 <span>Выбрать файл</span>
               </Button>
             </label>
-          </div>
-
-          {file && !result && (
-            <div className="mt-6 flex justify-end">
-              <Button onClick={handleSubmit} disabled={loading} className="gap-2">
-                {loading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Обработка...
-                  </>
-                ) : (
-                  <>
-                    <FileSpreadsheet className="h-4 w-4" />
-                    Запустить скоринг
-                  </>
-                )}
+          )}
+          {file && (
+            <div className="flex gap-3">
+              <Button onClick={handleUpload} disabled={loading}>
+                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4" />}
+                Обработать
+              </Button>
+              <Button variant="ghost" onClick={() => { setFile(null); reset(); }}>
+                Удалить
               </Button>
             </div>
           )}
-        </CardContent>
+        </div>
       </Card>
 
-      {result && (
-        <Card className="border-emerald-500/20 bg-emerald-500/5">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-emerald-500">
-              <CheckCircle className="h-5 w-5" />
-              Обработка завершена
-            </CardTitle>
-            <CardDescription>Batch ID: {result.batch_id}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="p-4 rounded-lg bg-card border">
-                <p className="text-sm text-muted-foreground">Всего</p>
-                <p className="text-2xl font-bold">{result.summary.total}</p>
-              </div>
-              <div className="p-4 rounded-lg bg-card border border-emerald-500/20">
-                <p className="text-sm text-emerald-500">Одобрено</p>
-                <p className="text-2xl font-bold text-emerald-500">{result.summary.approved}</p>
-              </div>
-              <div className="p-4 rounded-lg bg-card border border-rose-500/20">
-                <p className="text-sm text-rose-500">Отказ</p>
-                <p className="text-2xl font-bold text-rose-500">{result.summary.rejected}</p>
-              </div>
-            </div>
+      {error && (
+        <div className="rounded-lg bg-destructive/10 text-destructive px-4 py-3 text-sm">
+          {error}
+        </div>
+      )}
 
-            <div className="rounded-lg border overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-secondary">
-                  <tr>
-                    <th className="px-4 py-3 text-left font-medium">ID</th>
-                    <th className="px-4 py-3 text-left font-medium">Вероятность</th>
-                    <th className="px-4 py-3 text-left font-medium">Решение</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {result.predictions.slice(0, 10).map((p) => (
-                    <tr key={p.id}>
-                      <td className="px-4 py-3 font-mono">{p.id}</td>
-                      <td className="px-4 py-3">{(p.probability * 100).toFixed(1)}%</td>
-                      <td className="px-4 py-3">
-                        <span className={`
-                          inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium
-                          ${p.decision === 'approve' ? 'bg-emerald-500/10 text-emerald-500' : ''}
-                          ${p.decision === 'reject' ? 'bg-rose-500/10 text-rose-500' : ''}
-                        `}>
-                          {p.decision}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {result.predictions.length > 10 && (
-                <p className="px-4 py-3 text-xs text-muted-foreground text-center border-t">
-                  Показано 10 из {result.predictions.length} записей
-                </p>
-              )}
+      {result && (
+        <Card className="p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold">Результаты</h3>
+            <Button variant="outline" size="sm" onClick={downloadResults}>
+              <Download className="mr-2 h-4 w-4" />
+              Скачать CSV
+            </Button>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-lg bg-muted p-4 text-center">
+              <p className="text-2xl font-bold">{result.summary.total}</p>
+              <p className="text-xs text-muted-foreground">Всего</p>
             </div>
-          </CardContent>
+            <div className="rounded-lg bg-emerald-500/10 p-4 text-center">
+              <p className="text-2xl font-bold text-emerald-600">{result.summary.approved}</p>
+              <p className="text-xs text-emerald-600/70">Одобрено</p>
+            </div>
+            <div className="rounded-lg bg-rose-500/10 p-4 text-center">
+              <p className="text-2xl font-bold text-rose-600">{result.summary.rejected}</p>
+              <p className="text-xs text-rose-600/70">Отказ</p>
+            </div>
+          </div>
+
+          <div className="rounded-lg border overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-muted">
+                <tr>
+                  <th className="px-4 py-2 text-left font-medium">ID</th>
+                  <th className="px-4 py-2 text-left font-medium">Вероятность</th>
+                  <th className="px-4 py-2 text-left font-medium">Решение</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y">
+                {result.predictions.slice(0, 20).map((p) => (
+                  <tr key={p.id}>
+                    <td className="px-4 py-2">{p.id}</td>
+                    <td className="px-4 py-2">{(p.probability * 100).toFixed(1)}%</td>
+                    <td className="px-4 py-2">
+                      <span
+                        className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
+                          p.decision === 'approve'
+                            ? 'bg-emerald-500/10 text-emerald-600'
+                            : p.decision === 'review'
+                            ? 'bg-amber-500/10 text-amber-600'
+                            : 'bg-rose-500/10 text-rose-600'
+                        }`}
+                      >
+                        {p.decision === 'approve' ? 'Одобрено' : p.decision === 'review' ? 'Review' : 'Отказ'}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {result.predictions.length > 20 && (
+              <p className="px-4 py-2 text-xs text-muted-foreground bg-muted">
+                Показано 20 из {result.predictions.length} записей. Скачайте полный CSV.
+              </p>
+            )}
+          </div>
         </Card>
       )}
     </div>
