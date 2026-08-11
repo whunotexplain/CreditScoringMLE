@@ -11,9 +11,9 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Credit Scoring API"
     VERSION: str = "1.0.0"
 
-    # SQLite по умолчанию — чтобы потыкать без Postgres/Docker.
-    # Для докера потом просто переопредели через .env: DATABASE_URL=postgresql+psycopg2://...
-    DATABASE_URL: str = f"sqlite:///{REPO_ROOT / 'backend' / 'credit_scoring.db'}"
+    DATABASE_URL: str = "postgresql+psycopg2://postgres:postgres@localhost:5432/credit_scoring"
+    REDIS_URL: str = "redis://localhost:6379/0"
+    CACHE_TTL_SECONDS: int = 3600
 
     MODEL_PATH: str = str(MODELS_DIR / "xgboost_model.joblib")
     CALIBRATOR_PATH: str = str(MODELS_DIR / "calibrator.joblib")

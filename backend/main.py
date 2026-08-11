@@ -14,7 +14,6 @@ from app.ml.model import load_model
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-Base.metadata.create_all(bind=engine)
 
 
 @asynccontextmanager

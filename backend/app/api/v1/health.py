@@ -5,7 +5,7 @@ from sqlalchemy import text
 
 from app.database.session import SessionLocal
 from app.ml import model as model_module
-from app.schemas import HealthResponse
+from app.schemas.prediction import HealthResponse
 
 router = APIRouter()
 
