@@ -6,8 +6,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
-from app.database.base import Base
-from app.database.session import engine
 from app.api.v1.router import router
 from app.ml.model import load_model
 

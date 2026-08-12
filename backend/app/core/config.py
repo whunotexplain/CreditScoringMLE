@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Credit Scoring API"
     VERSION: str = "1.0.0"
 
-    DATABASE_URL: str = "postgresql+psycopg2://postgres:postgres@localhost:5432/credit_scoring"
+    DATABASE_URL: str = "postgresql+psycopg2://postgres@localhost:5432/credit_scoring"
     REDIS_URL: str = "redis://localhost:6379/0"
     CACHE_TTL_SECONDS: int = 3600
 

@@ -25,6 +25,8 @@ class TopFeature(BaseModel):
 
 
 class PredictionResponse(BaseModel):
+    model_config = ConfigDict(protected_namespaces=())
+    
     prediction_id: str
     probability: float
     decision: Literal["approve", "reject", "review"]
